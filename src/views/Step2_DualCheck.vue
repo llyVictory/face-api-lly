@@ -91,19 +91,73 @@ const verifiedName = ref("");
 const verifiedAddress = ref("");
 const verifiedTime = ref("");
 
+
+
 let videoEl = null;
 let canvasEl = null;
 let loopId = null;
 let timerId = null;
 let successCounter = 0;
+let missCounter = 0;
+let lastValidAddress = "";
 const successCounterDisplay = ref(0); 
+
+// GPS State
+const gpsAddress = ref("定位中...");
+const gpsCoords = ref(null);
 
 const onCameraReady = ({ video, canvas }) => {
   videoEl = video;
   canvasEl = canvas;
   startDualLoop();
   startTimer();
+  initLocation(); // Start GPS
 };
+
+const initLocation = () => {
+    if (!navigator.geolocation) {
+        gpsAddress.value = "不支持定位";
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        gpsCoords.value = { lat: latitude, lng: longitude };
+        gpsAddress.value = `GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`; // Fallback
+        
+        // Reverse Geocode (OpenStreetMap Nominatim)
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=zh-CN`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && data.display_name) {
+                // Shorten address if too long
+                let addr = data.display_name;
+                // Try to take specific parts if available to be cleaner
+                if (data.address) {
+                    const city = data.address.city || data.address.town || "";
+                    const road = data.address.road || "";
+                    const building = data.address.building || "";
+                    if (city || road) {
+                        addr = `${city} ${road} ${building}`;
+                    }
+                }
+                gpsAddress.value = addr;
+            }
+        } catch (e) {
+            console.warn("Geocoding failed:", e);
+            // Keep numerical GPS as fallback
+        }
+    }, (err) => {
+        console.error("GPS Error:", err);
+        gpsAddress.value = "定位失败";
+    }, {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+    });
+};
+
 
 const onCameraError = (err) => {
   debugMsg.value = err.message;
@@ -186,14 +240,22 @@ const startDualLoop = async () => {
     // --- Final Check ---
     if (isFaceMatched.value && isQrMatched.value) {
         successCounter++;
+        missCounter = 0; // Reset miss counter on success
+        lastValidAddress = currentAddress; // Cache valid address
+        
         successCounterDisplay.value = successCounter; 
         if (successCounter > 10) { 
-            handlePreSuccess(currentAddress);
+            handlePreSuccess(lastValidAddress);
             return; // Stop current loop logic immediately
         }
     } else {
-        successCounter = 0;
-        successCounterDisplay.value = 0;
+        // Grace period: Allow missing a few frames (e.g. 5 frames approx 150ms)
+        missCounter++;
+        if (missCounter > 5) {
+            successCounter = 0;
+            successCounterDisplay.value = 0;
+        }
+        // If within grace period, do NOT reset successCounter
     }
 
     loopId = requestAnimationFrame(loop);
@@ -217,7 +279,8 @@ const handlePreSuccess = async (address) => {
 
     // 2. Call Backend
     try {
-        const res = await verifyIdentity(captureBlob, address);
+        const fullAddress = `${address} @ ${gpsAddress.value}`;
+        const res = await verifyIdentity(captureBlob, fullAddress);
         
         if (res.code === 200 && res.isMatch) {
              isGlobalSuccess.value = true;
