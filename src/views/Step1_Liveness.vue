@@ -51,8 +51,8 @@ let isActionPending = false; // tracked state
 let isProcessingAction = false; // Lock to prevent rapid-fire triggering
 
 // Thresholds
-const BLINK_CLOSE_THRESH = 0.28; 
-const BLINK_OPEN_THRESH = 0.30;
+const BLINK_CLOSE_THRESH = 0.29; 
+const BLINK_OPEN_THRESH = 0.31;
 const MOUTH_OPEN_THRESH = 0.40; 
 const MOUTH_CLOSE_THRESH = 0.20; 
 

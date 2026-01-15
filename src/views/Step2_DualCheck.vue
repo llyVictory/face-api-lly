@@ -251,7 +251,7 @@ const startDualLoop = async () => {
     } else {
         // Grace period: Allow missing a few frames (e.g. 5 frames approx 150ms)
         missCounter++;
-        if (missCounter > 5) {
+        if (missCounter > 10) {
             successCounter = 0;
             successCounterDisplay.value = 0;
         }
