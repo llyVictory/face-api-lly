@@ -11,6 +11,13 @@ export default defineConfig({
   server: {
     host: true, // Expose to Network
     https: true, // Enable HTTPS for camera access
-    port: 5173
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://172.26.70.234:8000',
+        changeOrigin: true,
+        secure: false, // Target is HTTP, so no need to verify SSL
+      }
+    }
   }
 })

@@ -9,6 +9,11 @@
         <div class="instruction">{{ instructionText }}</div>
       </div>
 
+       <!-- Countdown Timer -->
+       <div class="timer" :class="{ critical: timeLeft <= 10 }">
+          ⏱ {{ timeLeft }}s
+       </div>
+
       <!-- Detection Indicators -->
       <div class="indicators">
         <div class="indicator" :class="{ ok: isFaceMatched }">
@@ -19,13 +24,32 @@
         </div>
       </div>
 
+      <!-- Loading / API Check Overlay -->
+      <div v-if="verifying" class="processing-overlay">
+          <div class="spinner"></div>
+          <p>正在连接云端验证身份...</p>
+      </div>
+
       <!-- Success Modal -->
-      <div v-if="isSuccess" class="success-screen">
+      <div v-if="isGlobalSuccess" class="success-screen">
         <div class="success-content">
           <div class="checkmark">✔</div>
           <h2>签到成功</h2>
-          <p>身份与位置核验通过</p>
+          <div class="result-details">
+             <p>👤 姓名: <strong>{{ verifiedName }}</strong></p>
+             <p>📍 地点: {{ verifiedAddress }}</p>
+             <p>🕒 时间: {{ verifiedTime }}</p>
+          </div>
           <button @click="resetApp">重新演示</button>
+        </div>
+      </div>
+      
+      <!-- Fail/timeout Modal -->
+      <div v-if="isFailed" class="fail-screen">
+        <div class="fail-content">
+          <div class="crossmark">✕</div>
+          <h2>{{ failReason }}</h2>
+          <button @click="resetApp">重试</button>
         </div>
       </div>
 
@@ -39,11 +63,13 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue';
+import { ref, onUnmounted, onMounted } from 'vue';
 import Camera from '../components/Camera.vue';
 import { faceEngine, api as faceapi } from '../logic/face';
 import { scanQRCode } from '../logic/scanner';
+import { verifyIdentity } from '../logic/api';
 import { appState } from '../state';
+import { CONFIG } from '../config';
 
 const cameraRef = ref(null);
 const instructionText = ref("请与现场二维码同框合影");
@@ -51,62 +77,85 @@ const faceStatus = ref("未检测");
 const qrStatus = ref("未检测");
 const debugMsg = ref("");
 
+// State
 const isFaceMatched = ref(false);
 const isQrMatched = ref(false);
-const isSuccess = ref(false);
+const timeLeft = ref(CONFIG.TIMEOUT_SECONDS);
+const verifying = ref(false);
+const isGlobalSuccess = ref(false);
+const isFailed = ref(false);
+const failReason = ref("");
+
+// Result Data
+const verifiedName = ref("");
+const verifiedAddress = ref("");
+const verifiedTime = ref("");
 
 let videoEl = null;
 let canvasEl = null;
 let loopId = null;
+let timerId = null;
 let successCounter = 0;
-const successCounterDisplay = ref(0); // For UI display
+const successCounterDisplay = ref(0); 
 
 const onCameraReady = ({ video, canvas }) => {
   videoEl = video;
   canvasEl = canvas;
   startDualLoop();
+  startTimer();
 };
 
 const onCameraError = (err) => {
   debugMsg.value = err.message;
 };
 
+const startTimer = () => {
+    timerId = setInterval(() => {
+        timeLeft.value--;
+        if (timeLeft.value <= 0) {
+            handleFail("验证超时");
+        }
+    }, 1000);
+};
+
 const resetApp = () => {
     appState.reset();
 }
 
+const handleFail = (reason) => {
+    isFailed.value = true;
+    failReason.value = reason;
+    stopAll();
+};
+
+const stopAll = () => {
+    if (loopId) cancelAnimationFrame(loopId);
+    if (timerId) clearInterval(timerId);
+};
+
 const startDualLoop = async () => {
   const loop = async () => {
-    if (!videoEl || videoEl.paused || videoEl.ended || isSuccess.value) return;
+    if (!videoEl || videoEl.paused || videoEl.ended || verifying.value || isFailed.value) return;
 
     // 1. Face Detection
     const detection = await faceEngine.detectSingleFace(videoEl);
     
     // 2. QR Detection
-    // Draw current frame to canvas for QR scanning (and overlay clearing)
     const ctx = canvasEl.getContext('2d');
     ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    
-    // Scan QR from the canvas we just drew
     const qrResult = scanQRCode(ctx, canvasEl.width, canvasEl.height);
-
-    // Clear canvas again to draw clean overlays
-    // Actually, drawing the video frame is needed for scanQRCode in this implementation?
-    // scanQRCode uses getImageData.
-    // But we want to see the camera feed. The Camera component has a video element behind the canvas.
-    // So we should CLEAR the canvas after scanning, so we can draw boxes on top of the video element.
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
 
     // --- Face Logic ---
     if (detection) {
       const dist = faceapi.euclideanDistance(detection.descriptor, appState.baseFaceDescriptor);
-      debugMsg.value = `Distance: ${dist.toFixed(4)}`;
+      // debugMsg.value = `Distance: ${dist.toFixed(4)}`; // reduce noise
       
       const box = detection.detection.box;
       
       if (dist < 0.5) { // Match Threshold
          isFaceMatched.value = true;
-         faceStatus.value = "匹配成功";
+         faceStatus.value = "本人";
          drawBox(ctx, box, '#4CAF50', `我 (${dist.toFixed(2)})`);
       } else {
          isFaceMatched.value = false;
@@ -119,20 +168,17 @@ const startDualLoop = async () => {
     }
 
     // --- QR Logic ---
+    let currentAddress = null;
     if (qrResult) {
-      // visualization
       drawPoly(ctx, qrResult.location, '#2196F3');
-
-      if (qrResult.data.includes(appState.verificationQR) || qrResult.data === 'DEMO_CLASSROOM') {
+      // For demo, accept ANY QR, or specific ones. 
+      // User said "arbitrary string is fine, write to CSV address"
+      if (qrResult.data) {
+         currentAddress = qrResult.data;
          isQrMatched.value = true;
-         qrStatus.value = "位置正确";
-      } else {
-         isQrMatched.value = false;
-         qrStatus.value = "位置错误";
+         qrStatus.value = "已获取";
       }
     } else {
-      // isQrMatched.value = false; 
-      // Keep true for a few frames to prevent flickering? No, strict for demo.
       isQrMatched.value = false;
       qrStatus.value = "未检测";
     }
@@ -140,13 +186,14 @@ const startDualLoop = async () => {
     // --- Final Check ---
     if (isFaceMatched.value && isQrMatched.value) {
         successCounter++;
-        successCounterDisplay.value = successCounter; // Update UI
-        if (successCounter > 10) { // Reduced from 20 to 10 for faster trigger
-            handleSuccess();
+        successCounterDisplay.value = successCounter; 
+        if (successCounter > 10) { 
+            handlePreSuccess(currentAddress);
+            return; // Stop current loop logic immediately
         }
     } else {
         successCounter = 0;
-        successCounterDisplay.value = 0; // Reset UI
+        successCounterDisplay.value = 0;
     }
 
     loopId = requestAnimationFrame(loop);
@@ -155,20 +202,50 @@ const startDualLoop = async () => {
   loop();
 };
 
+const handlePreSuccess = async (address) => {
+    stopAll(); // Stop timer and loop
+    verifying.value = true;
+    
+    // 1. Capture Image Blob
+    const captureBlob = await new Promise(resolve => {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = videoEl.videoWidth;
+        tempCanvas.height = videoEl.videoHeight;
+        tempCanvas.getContext('2d').drawImage(videoEl, 0, 0);
+        tempCanvas.toBlob(resolve, 'image/jpeg', 0.9);
+    });
+
+    // 2. Call Backend
+    try {
+        const res = await verifyIdentity(captureBlob, address);
+        
+        if (res.code === 200 && res.isMatch) {
+             isGlobalSuccess.value = true;
+             verifiedName.value = res.userId;
+             verifiedAddress.value = res.address;
+             verifiedTime.value = new Date().toLocaleTimeString();
+        } else {
+             handleFail(`认证失败: ${res.msg}`);
+        }
+
+    } catch (e) {
+        handleFail(`网络/服务器错误: ${e.message}`);
+    } finally {
+        verifying.value = false;
+    }
+};
+
 const drawBox = (ctx, box, color, label) => {
-  const canvasWidth = ctx.canvas.width;
-  
   ctx.strokeStyle = color;
   ctx.lineWidth = 3;
   ctx.strokeRect(box.x, box.y, box.width, box.height);
   
   // Draw text in correct orientation (counter the CSS mirror)
   ctx.save();
-  // Move to text position, flip horizontally, then draw
   const textX = box.x + box.width / 2;
   const textY = box.y - 10;
   ctx.translate(textX, textY);
-  ctx.scale(-1, 1); // Flip horizontally to counter CSS mirror
+  ctx.scale(-1, 1); 
   ctx.fillStyle = color;
   ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'center';
@@ -188,13 +265,8 @@ const drawPoly = (ctx, loc, color) => {
   ctx.stroke();
 };
 
-const handleSuccess = () => {
-    isSuccess.value = true;
-    instructionText.value = "完成!";
-};
-
 onUnmounted(() => {
-  if (loopId) cancelAnimationFrame(loopId);
+  stopAll();
 });
 </script>
 
@@ -227,6 +299,26 @@ onUnmounted(() => {
   backdrop-filter: blur(10px);
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timer {
+    margin-top: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    background: rgba(0,0,0,0.5);
+    padding: 5px 15px;
+    border-radius: 12px;
+}
+.timer.critical {
+    color: #ff4d4d;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }
 
 .step-badge {
@@ -269,21 +361,45 @@ onUnmounted(() => {
     color: #4CAF50;
 }
 
-.success-screen {
+/* Processing Overlay */
+.processing-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 20;
+}
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: #2196F3;
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+    margin-bottom: 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+.success-screen, .fail-screen {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.9);
     pointer-events: auto;
     display: flex;
     justify-content: center;
     align-items: center;
     animation: fadeIn 0.5s ease;
+    z-index: 30;
 }
 
-.success-content {
+.success-content, .fail-content {
     text-align: center;
     color: white;
 }
@@ -297,6 +413,29 @@ onUnmounted(() => {
     line-height: 80px;
     margin: 0 auto 20px;
     box-shadow: 0 0 30px #4CAF50;
+}
+
+.crossmark {
+    width: 80px;
+    height: 80px;
+    background: #FF5252;
+    border-radius: 50%;
+    font-size: 40px;
+    line-height: 80px;
+    margin: 0 auto 20px;
+    box-shadow: 0 0 30px #FF5252;
+}
+
+.result-details {
+    margin: 20px 0;
+    text-align: left;
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 12px;
+}
+.result-details p {
+    margin: 8px 0;
+    font-size: 16px;
 }
 
 button {
