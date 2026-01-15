@@ -104,6 +104,27 @@ export class FaceEngine {
 
         return (vertical1 + vertical2) / (2.0 * horizontal);
     }
+
+    // Calculate Mouth Aspect Ratio (MAR)
+    calculateMAR(mouth) {
+        // Points for Inner Lip: Left(12), Top(14), Right(16), Bottom(18)
+        // corresponding to 60, 62, 64, 66 in 68-point model
+
+        if (!mouth || mouth.length < 19) return 0;
+
+        const pLeft = mouth[12];
+        const pRight = mouth[16];
+        const pTop = mouth[14];
+        const pBottom = mouth[18];
+
+        const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+
+        const horizontal = dist(pLeft, pRight);
+        const vertical = dist(pTop, pBottom);
+
+        if (horizontal === 0) return 0;
+        return vertical / horizontal;
+    }
 }
 
 export const faceEngine = new FaceEngine();

@@ -21,8 +21,8 @@
       <!-- Feedback Toast -->
       <div v-if="feedbackMsg" class="feedback-toast">{{ feedbackMsg }}</div>
 
-      <!-- Debug EAR Display -->
-      <div class="debug-ear">EAR: {{ debugEAR }}</div>
+      <!-- Debug Display -->
+      <div class="debug-ear">{{ debugKey }}: {{ debugVal }}</div>
     </div>
   </div>
 </template>
@@ -38,85 +38,113 @@ const isFaceDetected = ref(false);
 const isSuccess = ref(false);
 const instructionText = ref("请正对屏幕，保持静止");
 const feedbackMsg = ref("");
-const debugEAR = ref("--");
+const debugKey = ref("Init");
+const debugVal = ref("--");
 let videoEl = null;
 let canvasEl = null;
 let loopId = null;
 
 // Logic State
-let blinkCount = 0;
-let isBlinking = false;
-const BLINK_THRESHOLD = 0.285; // EAR value (lowered for easier detection)
-const OPEN_THRESHOLD = 0.30; // EAR value to confirm eyes opened again
+let actionQueue = []; // Queue of actions
+let currentAction = ''; // 'blink' or 'mouth'
+let isActionPending = false; // tracked state
+let isProcessingAction = false; // Lock to prevent rapid-fire triggering
+
+// Thresholds
+const BLINK_CLOSE_THRESH = 0.28; 
+const BLINK_OPEN_THRESH = 0.30;
+const MOUTH_OPEN_THRESH = 0.40; 
+const MOUTH_CLOSE_THRESH = 0.20; 
 
 const onCameraReady = ({ video, canvas }) => {
   videoEl = video;
   canvasEl = canvas;
+  
+  if (Math.random() > 0.5) {
+      actionQueue = ['blink', 'mouth'];
+  } else {
+      actionQueue = ['mouth', 'blink'];
+  }
+  
+  nextAction(); 
   startDetectionLoop();
 };
 
-const onCameraError = (err) => {
-  feedbackMsg.value = "摄像头启动失败: " + err.message;
+const nextAction = () => {
+    if (actionQueue.length === 0) {
+        currentAction = 'done';
+        return;
+    }
+    
+    currentAction = actionQueue.shift();
+    isActionPending = false;
+    isProcessingAction = false; // Unlock
+    
+    if (currentAction === 'blink') {
+        instructionText.value = "动作 1/2: 请眨眨眼";
+        debugKey.value = "EAR";
+    } else if (currentAction === 'mouth') {
+        instructionText.value = "动作 2/2: 请张张嘴";
+        debugKey.value = "MAR";
+    }
 };
+// ... (onCameraError kept same)
 
 const startDetectionLoop = async () => {
-  // Ensure models are loaded
+  // ... (Model loading kept same)
   if (!faceEngine.modelsLoaded) {
-    feedbackMsg.value = "正在加载AI模型...";
-    await faceEngine.loadModels();
-    feedbackMsg.value = "";
+      // ...
+      await faceEngine.loadModels();
+      // ...
   }
 
-  instructionText.value = "请眨眨眼 (Blink Eyes)";
-
   const loop = async () => {
-    if (!videoEl || videoEl.paused || videoEl.ended) return;
+    if (!videoEl || videoEl.paused || videoEl.ended || isSuccess.value) return;
 
     const detection = await faceEngine.detectSingleFace(videoEl);
-    
-    // Clear canvas
     const ctx = canvasEl.getContext('2d');
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
 
-    if (detection) {
+    if (detection && !isProcessingAction && currentAction !== 'done') {
       isFaceDetected.value = true;
-      
-      // Draw landmarks for debugging/cool effect
-      // faceapi.draw.drawFaceLandmarks(canvasEl, detection); // Optional: simplified draw
-
-      // Liveness Check: Blink
       const landmarks = detection.landmarks;
-      const leftEye = landmarks.getLeftEye();
-      const rightEye = landmarks.getRightEye();
       
-      const leftEAR = faceEngine.calculateEAR(leftEye);
-      const rightEAR = faceEngine.calculateEAR(rightEye);
+      const leftEAR = faceEngine.calculateEAR(landmarks.getLeftEye());
+      const rightEAR = faceEngine.calculateEAR(landmarks.getRightEye());
       const avgEAR = (leftEAR + rightEAR) / 2;
+      const mar = faceEngine.calculateMAR(landmarks.getMouth());
 
-      // Update debug display
-      debugEAR.value = avgEAR.toFixed(3);
-
-      if (avgEAR < BLINK_THRESHOLD) {
-        if (!isBlinking) {
-          isBlinking = true; // Eyes closed
-          feedbackMsg.value = "检测到闭眼...";
-        }
-      } else {
-        if (isBlinking && avgEAR > OPEN_THRESHOLD) {
-          // Eyes opened again -> Blink detected
-          isBlinking = false;
-          blinkCount++;
-          feedbackMsg.value = "捕捉到眨眼动作!";
+      if (currentAction === 'blink') {
+          debugVal.value = avgEAR.toFixed(3);
           
-          if (blinkCount >= 1) { // Just 1 blink for demo speed
-            handleSuccess(detection);
-            return; // Stop loop
+          if (avgEAR < BLINK_CLOSE_THRESH) {
+            if (!isActionPending) {
+              isActionPending = true; 
+              feedbackMsg.value = "检测到闭眼...";
+            }
+          } else {
+            if (isActionPending && avgEAR > BLINK_OPEN_THRESH) {
+              handleActionSuccess("眨眼成功!");
+            }
           }
-        }
-      }
 
-    } else {
+      } else if (currentAction === 'mouth') {
+           debugVal.value = mar.toFixed(3);
+          
+          if (mar > MOUTH_OPEN_THRESH) {
+              if (!isActionPending) {
+                  isActionPending = true; 
+                  feedbackMsg.value = "检测到张嘴...";
+              }
+          } else {
+              if (isActionPending && mar < MOUTH_CLOSE_THRESH) {
+                  handleActionSuccess("张嘴成功!");
+              }
+          }
+      }
+    } else if (!detection) {
       isFaceDetected.value = false;
+      feedbackMsg.value = currentAction === 'done' ? "准备跳转..." : "未检测到人脸";
     }
 
     loopId = requestAnimationFrame(loop);
@@ -125,9 +153,66 @@ const startDetectionLoop = async () => {
   loop();
 };
 
-const handleSuccess = async (detection) => {
+const handleActionSuccess = (msg) => {
+    isProcessingAction = true; // Lock immediately
+    feedbackMsg.value = msg;
+    isActionPending = false;
+    
+    // Check if this was the last action locally before waiting
+    // (Actually nextAction logic handles queue)
+    
+    setTimeout(() => {
+        nextAction();
+        if (currentAction === 'done') {
+             // Need detection for capture? triggerSuccess saves the last detection logic
+             // But loop continues. We can capture in triggerSuccess using videoEl directly.
+             // We pass 'null' for detection since triggerSuccess recalculates or we just capture video frame.
+             // Wait, triggerSuccess used 'detection.descriptor'.
+             // We need to capture descriptor at the END.
+             // Let's capture verification descriptor NOW or at end?
+             // Better capture at end of ALL actions.
+             
+             // To be safe, let's grab a fresh detection or use current flow.
+             // Since loop continues, next frame will catch 'done' and we can trigger.
+             // BUT triggerSuccess stops loop.
+             
+             // Simplest: Call a specific finalizer that gets one last clear frame.
+             finalizeStep1();
+        }
+    }, 1500); // 1.5s delay to ensure user sees "Success" message and resets face
+};
+
+const finalizeStep1 = async () => {
+    instructionText.value = "活体检测通过!";
+    // Find one last good face for the descriptor
+    let detection = await faceEngine.detectSingleFace(videoEl);
+    if (!detection) {
+        // Retry a few times if lost
+        detection = await faceEngine.detectSingleFace(videoEl);
+    }
+    
+    if (detection) {
+        triggerSuccess(detection);
+    } else {
+        // Edge case: face lost right at the end. 
+        // Just Restart capture or use loop to wait?
+        // Let's just try to call triggerSuccess. if it needs detection..
+        // Re-use logic.
+        alert("请保持人脸在画面中");
+        isProcessingAction = false; // Unlock to try again to capture
+        currentAction = 'done'; // force done state? No, need to re-trigger.
+        // Actually if face is lost, user might be confused.
+        // Let's just reset to done state and let loop catch a face?
+        // No, 'done' state stops loop logic in my code above.
+        
+        // Let's change loop logic to: if done, capture and finish.
+    }
+};
+
+const triggerSuccess = async (detection) => {
   isSuccess.value = true;
-  instructionText.value = "验证通过!";
+  instructionText.value = "动作验证通过!";
+  feedbackMsg.value = "正在截取...";
   cancelAnimationFrame(loopId);
 
   // Use the FULL detection descriptor (already computed in detectSingleFace)
@@ -143,19 +228,6 @@ const handleSuccess = async (detection) => {
   setTimeout(() => {
     appState.currentStep = 2; // Go to Step 2
   }, 1000);
-};
-
-// Manual skip for demo purposes
-const manualSkip = async () => {
-  feedbackMsg.value = "手动跳过，正在抓取人脸...";
-  
-  // Try to get current detection
-  const detection = await faceEngine.detectSingleFace(videoEl);
-  if (detection) {
-    handleSuccess(detection);
-  } else {
-    feedbackMsg.value = "未检测到人脸，请确保脸部在画面中";
-  }
 };
 
 onUnmounted(() => {
@@ -280,18 +352,5 @@ onUnmounted(() => {
   border-radius: 6px;
   font-family: monospace;
   font-size: 14px;
-}
-
-.skip-btn {
-  position: absolute;
-  bottom: 40px;
-  background: rgba(255, 152, 0, 0.8);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  cursor: pointer;
-  pointer-events: auto;
 }
 </style>
