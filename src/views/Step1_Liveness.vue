@@ -5,7 +5,7 @@
     <div class="overlay-ui">
       <!-- Top Status Bar -->
       <div class="status-bar">
-        <div class="step-badge">1/2 活体验证</div>
+        <div class="step-badge">{{ stepBadgeText }}</div>
         <div class="instruction">{{ instructionText }}</div>
       </div>
 
@@ -37,6 +37,7 @@ const cameraRef = ref(null);
 const isFaceDetected = ref(false);
 const isSuccess = ref(false);
 const instructionText = ref("请正对屏幕，保持静止");
+const stepBadgeText = ref("活体验证"); // Default
 const feedbackMsg = ref("");
 const debugKey = ref("Init");
 const debugVal = ref("--");
@@ -46,6 +47,7 @@ let loopId = null;
 
 // Logic State
 let actionQueue = []; // Queue of actions
+let totalActions = 0; // Total actions to perform
 let currentAction = ''; // 'blink' or 'mouth'
 let isActionPending = false; // tracked state
 let isProcessingAction = false; // Lock to prevent rapid-fire triggering
@@ -65,6 +67,7 @@ const onCameraReady = ({ video, canvas }) => {
   } else {
       actionQueue = ['mouth', 'blink'];
   }
+  totalActions = actionQueue.length;
   
   nextAction(); 
   startDetectionLoop();
@@ -80,11 +83,18 @@ const nextAction = () => {
     isActionPending = false;
     isProcessingAction = false; // Unlock
     
+    // Update Badge: 1/2 or 2/2
+    // If raw queue was 2, now length is 1 -> means we are at 1st action (2-1+1=2? No)
+    // 1st call: queue has 1 left (was 2). Index = 2 - 1 = 1.
+    // 2nd call: queue has 0 left (was 1). Index = 2 - 0 = 2.
+    const currentIndex = totalActions - actionQueue.length;
+    stepBadgeText.value = `活体验证 ${currentIndex}/${totalActions}`;
+
     if (currentAction === 'blink') {
-        instructionText.value = "动作 1/2: 请眨眨眼";
+        instructionText.value = "请眨眨眼。建议闭眼时间大于1秒钟";
         debugKey.value = "EAR";
     } else if (currentAction === 'mouth') {
-        instructionText.value = "动作 2/2: 请张张嘴";
+        instructionText.value = "请张张嘴";
         debugKey.value = "MAR";
     }
 };

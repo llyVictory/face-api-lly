@@ -5,7 +5,7 @@
     <div class="overlay-ui">
       <!-- Top Status Bar -->
       <div class="status-bar">
-        <div class="step-badge">2/2 现场合拍</div>
+        <div class="step-badge">现场合拍</div>
         <div class="instruction">{{ instructionText }}</div>
       </div>
 
