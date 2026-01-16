@@ -18,7 +18,7 @@ const qrDataUrl = ref('');
 const hidden = ref(false);
 
 // Generate static QR for demo
-QRCode.toDataURL('DEMO_CLASSROOM', { errorCorrectionLevel: 'H' }, (err, url) => {
+QRCode.toDataURL('博文楼101', { errorCorrectionLevel: 'H' }, (err, url) => {
   if (!err) qrDataUrl.value = url;
 });
 </script>

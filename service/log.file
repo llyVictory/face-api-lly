@@ -1,0 +1,32 @@
+2026-01-16 09:05:38,976 - INFO - Initializing Face Model...
+2026-01-16 09:05:40,571 - INFO - Loading Vector Database...
+2026-01-16 09:05:40,571 - INFO - Scanning 'picture' for employee faces...
+2026-01-16 09:05:40,752 - INFO - Loaded face for: lly
+2026-01-16 09:05:40,924 - INFO - Loaded face for: cpf
+2026-01-16 09:05:41,097 - INFO - Loaded face for: szj
+2026-01-16 09:05:41,280 - INFO - Loaded face for: ldh
+2026-01-16 09:05:41,455 - INFO - Loaded face for: wbq
+2026-01-16 09:05:41,455 - INFO - Successfully loaded 5 faces from local directory.
+2026-01-16 11:12:14,992 - INFO - Initializing Face Model...
+2026-01-16 11:12:18,277 - INFO - Loading Vector Database...
+2026-01-16 11:12:18,280 - INFO - Scanning 'picture' for employee faces...
+2026-01-16 11:12:18,522 - INFO - Loaded face for: lly
+2026-01-16 11:12:18,695 - INFO - Loaded face for: cpf
+2026-01-16 11:12:18,953 - INFO - Loaded face for: szj
+2026-01-16 11:12:19,142 - INFO - Loaded face for: ldh
+2026-01-16 11:12:19,347 - INFO - Loaded face for: wbq
+2026-01-16 11:12:19,348 - INFO - Successfully loaded 5 faces from local directory.
+2026-01-16 11:15:15,399 - INFO - --- Verification Request ---
+2026-01-16 11:15:15,402 - INFO -   > Address: DEMO_CLASSROOM @ GPS: 36.6597, 117.0504
+2026-01-16 11:15:15,402 - INFO -   > Max Score: 0.6834
+2026-01-16 11:15:15,402 - INFO -   > Matched User: lly
+2026-01-16 11:15:15,403 - INFO -   > Result: Success
+2026-01-16 11:15:15,403 - INFO -   > Response: {'code': 200, 'isMatch': True, 'userId': 'lly', 'score': 0.6833586692810059, 'msg': 'Success', 'address': 'DEMO_CLASSROOM @ GPS: 36.6597, 117.0504'}
+2026-01-16 11:15:15,404 - INFO - ----------------------------
+2026-01-16 11:19:14,688 - INFO - --- Verification Request ---
+2026-01-16 11:19:14,689 - INFO -   > Address: 博文楼101 @ GPS: 36.6596, 117.0504
+2026-01-16 11:19:14,689 - INFO -   > Max Score: 0.7001
+2026-01-16 11:19:14,689 - INFO -   > Matched User: lly
+2026-01-16 11:19:14,689 - INFO -   > Result: Success
+2026-01-16 11:19:14,689 - INFO -   > Response: {'code': 200, 'isMatch': True, 'userId': 'lly', 'score': 0.7001129388809204, 'msg': 'Success', 'address': '博文楼101 @ GPS: 36.6596, 117.0504'}
+2026-01-16 11:19:14,689 - INFO - ----------------------------

@@ -6,9 +6,30 @@ import shutil
 import os
 import cv2
 import numpy as np
+import logging
+import sys
 from face_service import FaceService
 from vector_db import VectorDB
 from attendance_logger import log_attendance
+
+# --- Logging Configuration ---
+# Create a logger
+logger = logging.getLogger("FaceService")
+logger.setLevel(logging.INFO)
+
+# Create handlers
+file_handler = logging.FileHandler("log.file", mode='a', encoding='utf-8')
+console_handler = logging.StreamHandler(sys.stdout)
+
+# Create formatters and add it to handlers
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers to the logger
+if not logger.handlers:
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
 app = FastAPI(title="Face Recognition Service")
 
@@ -28,16 +49,16 @@ vector_db = VectorDB()
 @app.on_event("startup")
 async def startup_event():
     # Initialize InsightFace model
-    print("Initializing Face Model...")
+    logger.info("Initializing Face Model...")
     face_service.init_model()
     # Load Vector DB
-    print("Loading Vector Database...")
+    logger.info("Loading Vector Database...")
     vector_db.load_db()
 
     # --- Auto-Ingest Images from 'picture' folder ---
     picture_dir = "picture"
     if os.path.exists(picture_dir):
-        print(f"Scanning '{picture_dir}' for employee faces...")
+        logger.info(f"Scanning '{picture_dir}' for employee faces...")
         count = 0
         for filename in os.listdir(picture_dir):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')) and "Zone.Identifier" not in filename:
@@ -49,24 +70,24 @@ async def startup_event():
                     # Read image
                     img = cv2.imread(file_path)
                     if img is None:
-                        print(f"  [WARN] Could not read {filename}")
+                        logger.warning(f"Could not read {filename}")
                         continue
                     
                     feature = face_service.get_feature(img)
                     if feature is not None:
                         vector_db.add(user_id, feature)
                         count += 1
-                        print(f"  [INFO] Loaded face for: {user_id}")
+                        logger.info(f"Loaded face for: {user_id}")
                     else:
-                        print(f"  [WARN] No face found in {filename}")
+                        logger.warning(f"No face found in {filename}")
                 except Exception as e:
-                    print(f"  [ERR] Failed to process {filename}: {e}")
+                    logger.error(f"Failed to process {filename}: {e}")
         
         if count > 0:
-            print(f"Successfully loaded {count} faces from local directory.")
+            logger.info(f"Successfully loaded {count} faces from local directory.")
             vector_db.save_db() # Save to persist for future restarts if needed
     else:
-        print(f"Directory '{picture_dir}' not found. Skipping local image ingest.")
+        logger.info(f"Directory '{picture_dir}' not found. Skipping local image ingest.")
 
 @app.get("/")
 def read_root():
@@ -109,12 +130,12 @@ async def verify_face(
         
         final_user_id = user_id if is_match else "Unknown"
         status = "Success" if is_match else "Fail"
-        
-        print(f"--- Verification Request ---")
-        print(f"  > Address: {address}")
-        print(f"  > Max Score: {score:.4f}")
-        print(f"  > Matched User: {user_id}")
-        print(f"  > Result: {status}")
+
+        logger.info(f"--- Verification Request ---")
+        logger.info(f"  > Address: {address}")
+        logger.info(f"  > Max Score: {score:.4f}")
+        logger.info(f"  > Matched User: {user_id}")
+        logger.info(f"  > Result: {status}")
         
         # Log to CSV
         log_attendance(final_user_id, status, address)
@@ -127,14 +148,14 @@ async def verify_face(
             "msg": "Success" if is_match else f"未录入或未匹配到 (Score: {score:.2f})",
             "address": address
         }
-        
-        print(f"  > Response: {response_data}")
-        print(f"----------------------------")
+
+        logger.info(f"  > Response: {response_data}")
+        logger.info(f"----------------------------")
 
         return response_data
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.error(f"Error: {str(e)}")
         return {"code": 500, "msg": str(e)}
 
 @app.post("/api/face/register")
@@ -157,8 +178,10 @@ async def register_face(
         vector_db.add(user_id, feature)
         vector_db.save_db() # Persist
         
+        logger.info(f"Registered new face for user: {user_id}")
         return {"code": 200, "msg": "Registered successfully"}
     except Exception as e:
+         logger.error(f"Registration Error: {str(e)}")
          return {"code": 500, "msg": str(e)}
 
 if __name__ == "__main__":

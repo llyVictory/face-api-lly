@@ -11,7 +11,9 @@ class FaceService:
         # 'buffalo_l' is a good server-side model
         # If download fails, ensure internet access or manually place models in ~/.insightface/models/
         # providers: ['CUDAExecutionProvider', 'CPUExecutionProvider']
-        self.app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
+        # Use local models directory
+        model_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+        self.app = FaceAnalysis(name='buffalo_l', root=model_root, providers=['CPUExecutionProvider'])
         self.app.prepare(ctx_id=0, det_size=(640, 640))
         
     def get_feature(self, img_numpy):

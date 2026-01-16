@@ -4,7 +4,7 @@ export const appState = reactive({
     currentStep: 0, // 0: Init, 1: Liveness, 2: DualCheck, 3: Success
     baseFaceDescriptor: null, // Float32Array from Step 1
     baseFaceImage: null, // Base64 image
-    verificationQR: 'DEMO_CLASSROOM', // Expected QR content
+    verificationQR: '博文楼101', // Expected QR content
     debugLog: [],
 
     log(msg) {

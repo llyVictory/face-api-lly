@@ -1,29 +1,23 @@
 Timestamp,UserID,Status,Address
-2026-01-12 11:18:00,ldh,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 11:18:06,ldh,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 11:18:36,lly,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 11:22:28,lly,Success,山东省济南市历下区历下区大舜天成北(山大路东)
-2026-01-12 11:23:09,cpf,Success,山东省济南市历下区历下区华为合作店(山大路)
-2026-01-12 11:23:50,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 11:24:00,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 13:51:45,ldh,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 13:58:07,ldh,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 14:01:02,ldh,Success,山东省济南市历下区历下区济南龙奥大厦(龙奥南路北)
-2026-01-12 14:44:51,lly,Success,位置解析失败(undefined)
-2026-01-12 14:45:17,Unknown,Fail,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 14:45:22,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 14:45:31,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 14:46:33,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 14:46:52,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:20:47,lly,Success,位置解析失败(undefined)
-2026-01-12 17:21:01,lly,Success,位置解析失败(undefined)
-2026-01-12 17:21:18,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:21:36,lly,Success,位置解析失败(undefined)
-2026-01-12 17:21:49,lly,Success,位置解析失败(undefined)
-2026-01-12 17:22:09,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:22:34,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:22:53,lly,Success,位置解析失败(undefined)
-2026-01-12 17:23:31,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:24:03,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:24:17,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
-2026-01-12 17:25:21,lly,Success,山东省济南市历下区历下区张亮鲜果(山大路店)
+
+2026-01-15 14:24:09,lly,Success,DEMO_CLASSROOM
+2026-01-15 14:30:23,lly,Success,DEMO_CLASSROOM
+2026-01-15 15:02:33,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6597, 117.0503"
+2026-01-15 15:03:42,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0502"
+2026-01-15 15:04:37,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0505"
+2026-01-15 15:05:04,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0505"
+2026-01-15 15:06:33,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0505"
+2026-01-15 15:09:25,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0503"
+2026-01-15 15:14:36,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0503"
+2026-01-15 15:49:59,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6595, 117.0505"
+2026-01-15 15:50:28,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6595, 117.0505"
+2026-01-15 15:52:54,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6593, 117.0504"
+2026-01-15 15:54:03,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0503"
+2026-01-15 15:56:01,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0504"
+2026-01-15 15:57:02,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6596, 117.0504"
+2026-01-15 16:04:49,lly,Success,DEMO_CLASSROOM @ 定位失败
+2026-01-15 16:05:41,szj,Success,"DEMO_CLASSROOM @ GPS: 36.6597, 117.0503"
+2026-01-15 16:22:33,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6597, 117.0504"
+2026-01-15 16:24:14,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6598, 117.0505"
+2026-01-16 11:15:15,lly,Success,"DEMO_CLASSROOM @ GPS: 36.6597, 117.0504"
+2026-01-16 11:19:14,lly,Success,"博文楼101 @ GPS: 36.6596, 117.0504"
